@@ -1,5 +1,7 @@
 # Moving day helper
 
+**Live site:** https://packing-helper-five.vercel.app
+
 A single-page tool with three parts:
 
 - **Packing tracker** — every room in the house (Upstairs, Downstairs, Kitchen, Laundry & storage, Garage & outdoor — 30 spaces in total), with tasks organised into 4 phases (sort, pack non-essentials, pack most things, last bits). Filter by phase and/or area, with an overall whole-house progress bar.
