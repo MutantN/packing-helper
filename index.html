@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Moving day helper</title>
+<style>
+  :root{
+    --bg: #FAF8F4;
+    --surface: #FFFFFF;
+    --surface-2: #F1EEE6;
+    --border: #E3DFD5;
+    --text: #2E2C28;
+    --text-muted: #7A766C;
+    --text-faint: #A8A399;
+    --sage: #5B8A6E;
+    --sage-light: #E3EFE6;
+    --sage-text: #2F5C42;
+    --terracotta: #C9714F;
+    --terracotta-light: #F7E7DE;
+    --terracotta-text: #8A4327;
+    --amber: #C99A3B;
+    --amber-light: #FBF1DD;
+    --amber-text: #7A5A12;
+    --blue-light: #E6EEF7;
+    --blue-text: #2B557A;
+    --radius: 14px;
+    --radius-sm: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:1.5rem 1.25rem 4rem;
+  }
+
+  header{ padding:1.5rem 0 1rem; text-align:left; }
+  header h1{ font-size:1.5rem; font-weight:600; margin:0 0 0.25rem; letter-spacing:-0.01em; }
+  header p{ margin:0; color:var(--text-muted); font-size:0.95rem; }
+
+  .countdown-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--sage-light); color:var(--sage-text);
+    border-radius:999px; padding:6px 14px;
+    font-size:0.85rem; font-weight:600; margin-top:0.75rem;
+  }
+
+  .date-row{ margin-bottom:1.25rem; }
+  .date-row label{ font-size:0.85rem; color:var(--text-muted); display:block; margin-bottom:4px; }
+  .date-row input{
+    font-size:0.95rem; padding:8px 10px; border:1px solid var(--border);
+    border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:inherit;
+  }
+
+  nav.tabs{ display:flex; gap:8px; margin:1.5rem 0 1.25rem; border-bottom:1px solid var(--border); }
+  nav.tabs button{
+    flex:1; background:none; border:none; font-size:0.95rem; font-weight:600;
+    color:var(--text-muted); padding:10px 4px 12px; cursor:pointer;
+    border-bottom:3px solid transparent; margin-bottom:-1px;
+    font-family:inherit; transition:color 0.15s, border-color 0.15s;
+  }
+  nav.tabs button.active{ color:var(--sage-text); border-bottom-color:var(--sage); }
+  nav.tabs button:focus-visible{ outline:2px solid var(--sage); outline-offset:2px; }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---- Progress ---- */
+  .stats-row{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(110px,1fr));
+    gap:10px; margin-bottom:1.25rem;
+  }
+  .stat{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.85rem; text-align:center; }
+  .stat .num{ font-size:1.4rem; font-weight:700; }
+  .stat .lbl{ font-size:0.75rem; color:var(--text-muted); margin-top:2px; }
+
+  .progress-label{ display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); margin-bottom:6px; }
+  .progress-bar{ width:100%; height:8px; background:var(--surface-2); border-radius:999px; overflow:hidden; margin-bottom:1.5rem; }
+  .progress-fill{ height:100%; background:var(--sage); border-radius:999px; transition:width 0.4s ease; }
+
+  /* ---- Tip box ---- */
+  .tip-box{
+    background:var(--sage-light); border-left:4px solid var(--sage);
+    border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+    padding:0.85rem 1rem; font-size:0.9rem; color:var(--sage-text); margin-bottom:1.25rem;
+  }
+  .tip-box strong{ font-weight:700; }
+
+  /* ---- Filter pills ---- */
+  .filter-label{ font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 0.4rem; }
+  .pill-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1rem; }
+  .pill{
+    padding:6px 14px; border-radius:999px; font-size:0.8rem; font-weight:600;
+    cursor:pointer; border:1px solid var(--border); background:var(--surface);
+    color:var(--text-muted); font-family:inherit; transition:all 0.15s;
+  }
+  .pill.active{ background:var(--text); color:var(--bg); border-color:var(--text); }
+  .pill.active.area-active{ background:var(--sage); border-color:var(--sage); color:#fff; }
+  .pill:focus-visible{ outline:2px solid var(--sage); outline-offset:2px; }
+
+  /* ---- Area headers ---- */
+  .area-header{
+    font-size:0.78rem; font-weight:700; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.06em;
+    margin:1.5rem 0 0.6rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border);
+  }
+  .area-header:first-child{ margin-top:0; }
+
+  /* ---- Rooms / tasks ---- */
+  .room{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:0.7rem; }
+  .room-header{
+    display:flex; align-items:center; gap:10px; padding:0.85rem 1.1rem; cursor:pointer;
+    background:var(--surface); border:none; width:100%; text-align:left;
+    font-family:inherit; font-size:0.92rem;
+  }
+  .room-header:focus-visible{ outline:2px solid var(--sage); outline-offset:-2px; }
+  .room-icon{ font-size:1.15rem; }
+  .room-title{ flex:1; font-weight:600; }
+  .room-prog{ font-size:0.78rem; color:var(--text-muted); font-weight:600; }
+  .chevron{ font-size:0.85rem; color:var(--text-faint); transition:transform 0.2s; display:inline-block; }
+  .room-header.open .chevron{ transform:rotate(180deg); }
+
+  .task-list{ display:none; border-top:1px solid var(--border); }
+  .task-list.open{ display:block; }
+
+  .task{
+    display:flex; align-items:flex-start; gap:10px; padding:0.65rem 1.1rem;
+    border-bottom:1px solid var(--border); cursor:pointer; font-size:0.88rem;
+    background:none; border-left:none; border-right:none; border-top:none;
+    width:100%; text-align:left; font-family:inherit; transition:background 0.1s;
+  }
+  .task:last-child{ border-bottom:none; }
+  .task:hover{ background:var(--surface-2); }
+  .task:focus-visible{ outline:2px solid var(--sage); outline-offset:-2px; }
+  .task.done .task-text{ text-decoration:line-through; color:var(--text-faint); }
+
+  .check{
+    width:20px; height:20px; min-width:20px; border-radius:6px; border:2px solid var(--border);
+    display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  .task.done .check{ background:var(--sage); border-color:var(--sage); }
+  .check svg{ width:12px; height:12px; display:none; }
+  .task.done .check svg{ display:block; }
+
+  .task-text{ flex:1; }
+  .tag{ font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; margin-top:1px; }
+  .tag-easy{ background:var(--sage-light); color:var(--sage-text); }
+  .tag-sort{ background:var(--amber-light); color:var(--amber-text); }
+  .tag-pack{ background:var(--blue-light); color:var(--blue-text); }
+  .tag-donate{ background:var(--terracotta-light); color:var(--terracotta-text); }
+
+  .empty{ text-align:center; color:var(--text-muted); padding:2rem; font-size:0.9rem; }
+
+  /* ---- Decision tool ---- */
+  .q-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+  .q-meta{ font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:0.5rem; font-weight:700;}
+  .q-text{ font-size:1.05rem; font-weight:600; margin-bottom:1rem; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  button.choice{
+    padding:10px 22px; border-radius:var(--radius-sm); font-size:0.9rem; font-weight:600; cursor:pointer;
+    border:2px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; transition:all 0.15s;
+  }
+  button.choice:hover{ background:var(--surface-2); }
+  button.choice.yes{ border-color:var(--sage); color:var(--sage-text); background:var(--sage-light); }
+  button.choice.no{ border-color:var(--terracotta); color:var(--terracotta-text); background:var(--terracotta-light); }
+  button.choice.ghost{ margin-left:auto; border-color:var(--border); color:var(--text-muted); }
+  button.choice:focus-visible{ outline:2px solid var(--sage); outline-offset:2px; }
+
+  .breadcrumb{ font-size:0.78rem; color:var(--text-faint); margin-bottom:0.85rem; line-height:1.8; }
+  .breadcrumb .yes-tag{ color:var(--sage-text); font-weight:700; }
+  .breadcrumb .no-tag{ color:var(--terracotta-text); font-weight:700; }
+
+  .result{ border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem; }
+  .result.keep{ background:var(--sage-light); border:1px solid var(--sage); }
+  .result.donate{ background:var(--terracotta-light); border:1px solid var(--terracotta); }
+  .result.bin{ background:var(--surface-2); border:1px solid var(--border); }
+  .result-title{ font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .result.keep .result-title{ color:var(--sage-text); }
+  .result.donate .result-title{ color:var(--terracotta-text); }
+  .result.bin .result-title{ color:var(--text-muted); }
+  .result-reason{ font-size:0.9rem; color:var(--text-muted); margin-top:6px; }
+  .result-actions{ margin-top:1rem; display:flex; gap:8px; flex-wrap:wrap; }
+
+  .section-title{ font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:1.75rem 0 0.6rem; }
+  .rule{ display:flex; gap:10px; padding:0.55rem 0; border-bottom:1px solid var(--border); font-size:0.88rem; align-items:flex-start; }
+  .rule:last-child{ border-bottom:none; }
+  .rule .dot{ width:8px; height:8px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+  .dot-keep{ background:var(--sage); }
+  .dot-donate{ background:var(--terracotta); }
+  .dot-neutral{ background:var(--text-faint); }
+  .rule strong{ font-weight:700; }
+  .rule span{ color:var(--text-muted); }
+
+  /* ---- Gantt timeline ---- */
+  .gantt-summary{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:1rem 1.25rem; margin-bottom:1.25rem; font-size:0.9rem; color:var(--text-muted);
+  }
+  .gantt-summary strong{ color:var(--text); font-weight:700; }
+  .gantt-scale{ display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem; padding:0 2px; }
+  .gantt-row{ margin-bottom:1.1rem; }
+  .gantt-row-label{ display:flex; justify-content:space-between; align-items:baseline; font-size:0.88rem; font-weight:600; margin-bottom:5px; }
+  .gantt-row-label .sub{ font-size:0.75rem; color:var(--text-muted); font-weight:500; }
+  .gantt-row-label .pct{ color:var(--text-muted); font-weight:600; font-size:0.78rem; }
+  .gantt-track{ position:relative; height:30px; background:var(--surface-2); border-radius:var(--radius-sm); }
+  .gantt-window{ position:absolute; top:0; bottom:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); }
+  .gantt-progress{ position:absolute; top:0; bottom:0; left:0; border-radius:var(--radius-sm); transition:width 0.4s; }
+  .gantt-progress.p-now{ background:var(--terracotta); }
+  .gantt-progress.p-mid{ background:var(--amber); }
+  .gantt-progress.p-late{ background:#5B8AC9; }
+  .gantt-progress.p-final{ background:var(--sage); }
+  .gantt-today-line{ position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--text); z-index:2; }
+  .gantt-today-label{
+    position:absolute; top:-20px; font-size:0.68rem; font-weight:700; color:var(--text);
+    transform:translateX(-50%); white-space:nowrap;
+  }
+  .gantt-status{ font-size:0.75rem; margin-top:4px; }
+  .gantt-status.ahead{ color:var(--sage-text); }
+  .gantt-status.behind{ color:var(--terracotta-text); }
+  .gantt-status.ontrack{ color:var(--text-muted); }
+  .gantt-empty{ text-align:center; color:var(--text-muted); padding:2rem 1rem; font-size:0.9rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+
+  footer{ text-align:center; font-size:0.78rem; color:var(--text-faint); margin-top:2.5rem; }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Moving day helper</h1>
+    <p>Whole-house packing tracker and keep-vs-donate guide</p>
+    <div class="countdown-pill" id="countdown-pill">Set your move date below</div>
+  </header>
+
+  <div class="date-row">
+    <label for="move-date">Move date</label>
+    <input type="date" id="move-date">
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tracker">Packing tracker</button>
+    <button class="tab-btn" data-tab="timeline">Timeline</button>
+    <button class="tab-btn" data-tab="decide">Keep or donate</button>
+  </nav>
+
+  <!-- ===================== TRACKER VIEW ===================== -->
+  <section class="view active" id="view-tracker">
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="progress-label">
+      <span>Whole-house progress</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+
+    <div class="tip-box" id="phase-tip"></div>
+
+    <div class="filter-label">Phase</div>
+    <div class="pill-row" id="phase-tabs"></div>
+
+    <div class="filter-label">Area</div>
+    <div class="pill-row" id="area-tabs"></div>
+
+    <div id="room-container"></div>
+
+  </section>
+
+  <!-- ===================== TIMELINE VIEW ===================== -->
+  <section class="view" id="view-timeline">
+    <div id="gantt-container"></div>
+  </section>
+
+  <!-- ===================== DECISION VIEW ===================== -->
+  <section class="view" id="view-decide">
+
+    <div id="quiz-area"></div>
+
+    <div class="section-title">Quick rules — no quiz needed</div>
+    <div class="rule"><span class="dot dot-donate"></span><span><strong>Clothing:</strong> haven't worn it in 12+ months &rarr; donate</span></div>
+    <div class="rule"><span class="dot dot-keep"></span><span><strong>Duplicate tools/appliances:</strong> keep the best one, donate the rest</span></div>
+    <div class="rule"><span class="dot dot-donate"></span><span><strong>Books:</strong> won't re-read it, or available digitally &rarr; donate</span></div>
+    <div class="rule"><span class="dot dot-donate"></span><span><strong>Linen/towels:</strong> stained, worn, or a 4th+ set &rarr; bin or donate</span></div>
+    <div class="rule"><span class="dot dot-neutral"></span><span><strong>Cables/tech:</strong> don't know what it's for &rarr; bin</span></div>
+    <div class="rule"><span class="dot dot-neutral"></span><span><strong>Cleaning &amp; pantry items:</strong> nearly empty or expired &rarr; use up or bin</span></div>
+    <div class="rule"><span class="dot dot-donate"></span><span><strong>Guilt gifts:</strong> the guilt isn't a reason to keep it &mdash; donate freely</span></div>
+    <div class="rule"><span class="dot dot-neutral"></span><span><strong>Furniture:</strong> won't fit the new room's dimensions &rarr; measure now, sell or donate early so it's not a last-minute scramble</span></div>
+    <div class="rule"><span class="dot dot-neutral"></span><span><strong>"What if I need it someday":</strong> if you haven't in 2 years, that day isn't coming</span></div>
+
+  </section>
+
+  <footer>Your progress is saved automatically on this device.</footer>
+</div>
+
+<script>
+/* ============ TASK TEMPLATES (by room category) ============ */
+const TEMPLATES={
+  bedroom:{
+    now:[{text:'Sort wardrobe and drawers \u2014 donate anything unworn in 12 months',tag:'donate'},
+         {text:'Clear under-bed and bedside storage \u2014 sort, don\u2019t pack yet',tag:'sort'}],
+    mid:[{text:'Pack out-of-season clothes and spare bedding',tag:'easy'},
+         {text:'Pack books, decor and non-essential items',tag:'pack'}],
+    late:[{text:'Pack most of wardrobe \u2014 leave a week of outfits',tag:'pack'}],
+    final:[{text:'Strip bedding and pack remaining clothes on moving day',tag:'pack'}]
+  },
+  ensuite:{
+    now:[{text:'Sort toiletries and medicines \u2014 bin expired items',tag:'sort'},
+         {text:'Consolidate half-used toiletries and donate spares',tag:'donate'}],
+    mid:[{text:'Pack spare toiletries, towels and first-aid supplies',tag:'easy'}],
+    late:[{text:'Pack most toiletries \u2014 leave a small daily-use bag out',tag:'pack'}],
+    final:[{text:'Pack last toiletries and bathmat on moving day',tag:'pack'}]
+  },
+  wir:{
+    now:[{text:'Sort clothes, shoes and accessories \u2014 donate anything unworn in 12 months',tag:'donate'},
+         {text:'Group hanging items by category to plan packing order',tag:'sort'}],
+    mid:[{text:'Pack out-of-season and rarely-worn clothing',tag:'easy'},
+         {text:'Pack shoes into labelled boxes and spare accessories',tag:'pack'}],
+    late:[{text:'Pack most clothing \u2014 leave a week of outfits hanging out',tag:'pack'}],
+    final:[{text:'Pack remaining clothes, shoes and hanging items on moving day',tag:'pack'}]
+  },
+  rec:{
+    now:[{text:'Sort games, books and storage units \u2014 donate unused items',tag:'donate'}],
+    mid:[{text:'Pack non-essential games, books and decor',tag:'pack'}],
+    late:[{text:'Pack most items, leaving daily-use entertainment',tag:'pack'}],
+    final:[{text:'Pack remaining items on moving day',tag:'pack'}]
+  },
+  linen:{
+    now:[{text:'Pull everything out \u2014 sort into keep, donate, bin',tag:'sort'},
+         {text:'Donate excess towels or worn/stained linen',tag:'donate'}],
+    mid:[{text:'Pack spare linen sets (label \u201cnot urgent\u201d)',tag:'easy'},
+         {text:'Pack extra pillowcases, tablecloths, etc.',tag:'pack'}],
+    late:[{text:'Pack all but 1 set of sheets + 2 towels per person',tag:'pack'}],
+    final:[{text:'Pack last towels and sheets on moving day',tag:'pack'}]
+  },
+  cloak:{
+    now:[{text:'Sort coats, shoes and umbrellas \u2014 donate unused items',tag:'donate'}],
+    mid:[{text:'Pack spare coats, shoes and accessories',tag:'easy'}],
+    late:[{text:'Pack most items, leaving daily outerwear',tag:'pack'}],
+    final:[{text:'Pack remaining coats and shoes on moving day',tag:'pack'}]
+  },
+  powder:{
+    now:[{text:'Sort toiletries and guest supplies \u2014 bin expired items',tag:'sort'}],
+    mid:[{text:'Pack spare guest toiletries and towels',tag:'easy'}],
+    late:[{text:'Pack most items, leaving a hand towel and soap',tag:'pack'}],
+    final:[{text:'Pack last items on moving day',tag:'pack'}]
+  },
+  library:{
+    now:[{text:'Sort books \u2014 keep only ones you\u2019ll re-read, donate the rest',tag:'donate'},
+         {text:'Sort shelves one at a time (10-min timer per shelf)',tag:'sort'}],
+    mid:[{text:'Pack books into small boxes (heavy \u2014 don\u2019t overfill)',tag:'pack'},
+         {text:'Pack decor, ornaments and non-essential items',tag:'pack'}],
+    late:[{text:'Pack remaining shelves except a few favourites',tag:'pack'}],
+    final:[{text:'Pack last books and shelf items on moving day',tag:'pack'}]
+  },
+  study:{
+    now:[{text:'Sort desk surface \u2014 bin junk, set aside donate pile',tag:'sort'},
+         {text:'Go through one drawer at a time (10-min timer per drawer)',tag:'sort'}],
+    mid:[{text:'Pack non-essential tech accessories and spare devices',tag:'pack'},
+         {text:'Pack files and documents into a labelled box',tag:'pack'}],
+    late:[{text:'Pack desk items except daily-use ones',tag:'pack'},
+          {text:'Disassemble desk / shelves \u2014 photograph setup first',tag:'pack'}],
+    final:[{text:'Pack remaining desk items, laptop last',tag:'pack'}]
+  },
+  dining:{
+    now:[{text:'Sort sideboard/buffet drawers and cupboards',tag:'sort'},
+         {text:'Declutter unused tableware, linens or decor',tag:'donate'}],
+    mid:[{text:'Pack good china and glassware \u2014 wrap each piece individually',tag:'pack'},
+         {text:'Pack table linens and spare sets',tag:'easy'}],
+    late:[{text:'Pack most tableware \u2014 leave a basic set out for daily use',tag:'pack'}],
+    final:[{text:'Pack table, chairs and remaining tableware on moving day',tag:'pack'}]
+  },
+  living:{
+    now:[{text:'Sort bookshelves, cabinets and media units',tag:'sort'},
+         {text:'Declutter ornaments, old magazines and unused items',tag:'donate'}],
+    mid:[{text:'Pack books, ornaments and non-essential decor',tag:'pack'},
+         {text:'Pack spare cables and accessories into a labelled box',tag:'easy'}],
+    late:[{text:'Pack most items, leaving only what you use daily',tag:'pack'}],
+    final:[{text:'Pack remaining items and prepare furniture for moving',tag:'pack'}]
+  },
+  entertainment:{
+    now:[{text:'Sort media units, games and equipment',tag:'sort'},
+         {text:'Declutter unused games, DVDs and cables',tag:'donate'}],
+    mid:[{text:'Photograph entertainment unit setup and cable layout before disconnecting',tag:'easy'},
+         {text:'Pack non-essential games, controllers and accessories',tag:'pack'}],
+    late:[{text:'Pack most equipment, leaving daily-use items',tag:'pack'}],
+    final:[{text:'Disconnect and pack smart TV and sound system on moving day',tag:'pack'}]
+  },
+  kitchen:{
+    now:[{text:'Sort contents \u2014 bin expired food, donate unused duplicates',tag:'donate'},
+         {text:'Group items by type to plan packing order',tag:'sort'}],
+    mid:[{text:'Pack rarely-used appliances, bakeware and special-occasion items',tag:'pack'},
+         {text:'Pack spare pantry items into a labelled food box',tag:'easy'}],
+    late:[{text:'Pack most items \u2014 leave out only what you need for daily cooking',tag:'pack'}],
+    final:[{text:'Pack remaining items and perishables on moving day',tag:'pack'}]
+  },
+  laundry:{
+    now:[{text:'Toss expired or near-empty cleaning products',tag:'sort'},
+         {text:'Consolidate half-used same products together',tag:'easy'}],
+    mid:[{text:'Pack rarely used cleaning items and spare products from cupboards',tag:'pack'},
+         {text:'Pack spare hangers (bundle with rubber bands)',tag:'easy'}],
+    late:[{text:'Pack most laundry supplies \u2014 leave out only daily items',tag:'pack'}],
+    final:[{text:'Pack last laundry supplies on moving day',tag:'pack'}]
+  },
+  storageshelf:{
+    now:[{text:'Sort shelf contents \u2014 bin or donate unused items',tag:'sort'}],
+    mid:[{text:'Pack rarely-used stored items into labelled boxes',tag:'pack'}],
+    late:[{text:'Pack most stored items, leaving only what\u2019s needed',tag:'pack'}],
+    final:[{text:'Pack last items from storage shelves on moving day',tag:'pack'}]
+  },
+  tools:{
+    now:[{text:'Sort tools \u2014 donate or bin duplicates and broken items',tag:'donate'},
+         {text:'Group tools by type (hand, power, hardware)',tag:'sort'}],
+    mid:[{text:'Pack power tools in original boxes, or wrap well',tag:'pack'},
+         {text:'Pack hardware (screws, nails) in labelled ziplock bags',tag:'easy'}],
+    late:[{text:'Pack all tools except screwdriver and hammer',tag:'pack'}],
+    final:[{text:'Pack last tools once furniture is disassembled',tag:'pack'}]
+  },
+  materials:{
+    now:[{text:'Assess bricks and building materials \u2014 decide what\u2019s worth keeping vs disposing',tag:'sort'}],
+    mid:[{text:'Arrange separate transport for heavy materials if needed',tag:'pack'}],
+    late:[{text:'Stack and prepare materials for collection or transport',tag:'pack'}],
+    final:[{text:'Confirm collection or transport of materials on moving day',tag:'pack'}]
+  },
+  outdoor:{
+    now:[{text:'Sort gardening tools and outdoor equipment \u2014 donate unused items',tag:'donate'},
+         {text:'Sort pots, planters and outdoor decor',tag:'sort'}],
+    mid:[{text:'Pack gardening tools and small outdoor items',tag:'pack'},
+         {text:'Empty soil from pots/planters or plan separate transport',tag:'pack'}],
+    late:[{text:'Pack most outdoor furniture and remaining items',tag:'pack'}],
+    final:[{text:'Pack last outdoor items on moving day',tag:'pack'}]
+  }
+};
+
+function buildTasks(cat){
+  const t=TEMPLATES[cat];
+  const out=[];
+  ['now','mid','late','final'].forEach(phase=>{
+    (t[phase]||[]).forEach(task=>out.push({phase:phase, text:task.text, tag:task.tag}));
+  });
+  return out;
+}
+
+/* ============ HOUSE DATA ============ */
+const AREAS=[
+  {id:'upstairs', label:'Upstairs', rooms:[
+    {id:'master-bed', label:'Master bedroom', icon:'\uD83D\uDECC\uFE0F', cat:'bedroom'},
+    {id:'master-ensuite', label:'Master ensuite', icon:'\uD83D\uDEBF', cat:'ensuite'},
+    {id:'master-wir', label:'Master WIR', icon:'\uD83D\uDC54', cat:'wir'},
+    {id:'bed2', label:'Bedroom 2', icon:'\uD83D\uDECC\uFE0F', cat:'bedroom'},
+    {id:'ensuite2', label:'Ensuite 2', icon:'\uD83D\uDEBF', cat:'ensuite'},
+    {id:'wir2', label:'WIR 2', icon:'\uD83D\uDC54', cat:'wir'},
+    {id:'bed3', label:'Bedroom 3', icon:'\uD83D\uDECC\uFE0F', cat:'bedroom'},
+    {id:'ensuite3', label:'Ensuite 3', icon:'\uD83D\uDEBF', cat:'ensuite'},
+    {id:'wir3', label:'WIR 3', icon:'\uD83D\uDC54', cat:'wir'},
+    {id:'bed4', label:'Bedroom 4', icon:'\uD83D\uDECC\uFE0F', cat:'bedroom'},
+    {id:'ensuite4', label:'Ensuite 4', icon:'\uD83D\uDEBF', cat:'ensuite'},
+    {id:'wir4', label:'WIR 4', icon:'\uD83D\uDC54', cat:'wir'},
+    {id:'rumpus', label:'Rumpus', icon:'\uD83C\uDFAE', cat:'rec'},
+    {id:'linen-up', label:'Linen cupboard', icon:'\uD83E\uDDFA', cat:'linen'}
+  ]},
+  {id:'downstairs', label:'Downstairs', rooms:[
+    {id:'cloak', label:'Cloak room', icon:'\uD83E\uDDE5', cat:'cloak'},
+    {id:'powder', label:'Powder room', icon:'\uD83D\uDEBD', cat:'powder'},
+    {id:'library', label:'Library', icon:'\uD83D\uDCDA', cat:'library'},
+    {id:'study', label:'Study / home office', icon:'\uD83D\uDDA5\uFE0F', cat:'study'},
+    {id:'dining', label:'Dining', icon:'\uD83C\uDF7D\uFE0F', cat:'dining'},
+    {id:'living', label:'Living', icon:'\uD83D\uDECB\uFE0F', cat:'living'},
+    {id:'entertainment', label:'Entertainment room', icon:'\uD83D\uDCFA', cat:'entertainment'}
+  ]},
+  {id:'kitchen', label:'Kitchen', rooms:[
+    {id:'kitchen-bench', label:'Kitchen bench \u2014 pot drawers & top cupboards', icon:'\uD83C\uDF73', cat:'kitchen'},
+    {id:'island', label:'Island bench \u2014 cupboards & drawers', icon:'\uD83C\uDF74', cat:'kitchen'},
+    {id:'pantry', label:'Pantry & utility stand', icon:'\uD83E\uDD6B', cat:'kitchen'},
+    {id:'galley', label:'Galley \u2014 stove & sink cupboards', icon:'\uD83E\uDDFC', cat:'kitchen'}
+  ]},
+  {id:'laundry-storage', label:'Laundry & storage', rooms:[
+    {id:'laundry', label:'Laundry cupboards', icon:'\uD83E\uDDFA', cat:'laundry'},
+    {id:'storage-shelves', label:'Storage \u2014 U-shape shelves', icon:'\uD83D\uDCE6', cat:'storageshelf'}
+  ]},
+  {id:'garage-outdoor', label:'Garage & outdoor', rooms:[
+    {id:'garage', label:'Garage & tools', icon:'\uD83E\uDDF0', cat:'tools'},
+    {id:'materials', label:'Bricks & building materials', icon:'\uD83E\uDDF1', cat:'materials'},
+    {id:'alfresco', label:'Alfresco & garden', icon:'\uD83C\uDF3F', cat:'outdoor'}
+  ]}
+];
+
+AREAS.forEach(area=>area.rooms.forEach(room=>{ room.tasks=buildTasks(room.cat); }));
+
+const PHASES=[
+  {id:'now',label:'Sort & declutter',tip:'<strong>Start here.</strong> No packing yet, just sorting. Put a basket in each room for keep, donate, and bin. 20 minutes is enough.',weight:0.25,short:'Sort'},
+  {id:'mid',label:'Pack non-essentials',tip:'<strong>Pack things you won\u2019t need before the move.</strong> One shelf at a time. Label boxes on the side, not the top \u2014 and note which room/area each box belongs in.',weight:0.35,short:'Pack non-essentials'},
+  {id:'late',label:'Pack most things',tip:'<strong>Almost there.</strong> Only leave out what you need daily. Keep an \u201copen first\u201d box for your first night, per area if needed.',weight:0.30,short:'Pack most things'},
+  {id:'final',label:'Last bits',tip:'<strong>Finish line.</strong> Pack your essentials bag (meds, chargers, a change of clothes, snacks). Walk through every room \u2014 don\u2019t forget upstairs storage and the garage.',weight:0.10,short:'Last bits'}
+];
+
+const TREE={
+  broken:{q:'Is it broken, expired, or unusable?',
+    yes:{result:'bin',title:'Bin it',reason:'Broken items cost money and energy to move, and you\u2019ll probably never fix them.'},
+    no:'sentimental'},
+  sentimental:{q:'Is it sentimental \u2014 something that genuinely makes you happy to look at?',
+    yes:{result:'keep',title:'Keep it',reason:'Meaningful things are worth keeping. Pack it carefully and find a good spot in the new place.'},
+    no:'used'},
+  used:{q:'Have you used it in the last 12 months?',yes:'fits',no:'replace'},
+  replace:{q:'Would it cost less than $50 to replace if you regretted donating it?',
+    yes:{result:'donate',title:'Donate it',reason:'If you ever need it again, it\u2019s cheap to replace. Not worth moving for \u201cjust in case\u201d.'},
+    no:'space'},
+  space:{q:'Do you have a specific place for it in the new home?',
+    yes:'fits',
+    no:{result:'donate',title:'Donate it',reason:'No home for it means no use for it. Donating now means someone else benefits, and you start fresh.'}},
+  fits:{q:'Does it still fit your life \u2014 physically, practically, or who you are now?',
+    yes:{result:'keep',title:'Keep it',reason:'It\u2019s used, it fits your life, and you have space. Pack it.'},
+    no:{result:'donate',title:'Donate it',reason:'Holding onto who we used to be is human, but moving is the perfect reset. Let it go.'}}
+};
+
+/* ============ STORAGE ============ */
+const KEY='moving_helper_v2';
+let state={done:[], moveDate:null, startDate:null};
+try{
+  const raw=localStorage.getItem(KEY);
+  if(raw) state=Object.assign(state, JSON.parse(raw));
+}catch(e){}
+let done=new Set(state.done);
+
+function save(){
+  state.done=[...done];
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+}
+
+/* ============ MOVE DATE / COUNTDOWN ============ */
+const dateInput=document.getElementById('move-date');
+const pill=document.getElementById('countdown-pill');
+
+function refreshCountdown(){
+  if(!state.moveDate){ pill.textContent='Set your move date below'; return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const move=new Date(state.moveDate); move.setHours(0,0,0,0);
+  const diffDays=Math.round((move-today)/(1000*60*60*24));
+  if(diffDays>1) pill.textContent='Moving in '+diffDays+' days';
+  else if(diffDays===1) pill.textContent='Moving tomorrow';
+  else if(diffDays===0) pill.textContent='Moving today';
+  else pill.textContent='Move date has passed';
+}
+
+if(state.moveDate) dateInput.value=state.moveDate;
+refreshCountdown();
+
+dateInput.addEventListener('change', ()=>{
+  state.moveDate=dateInput.value;
+  if(!state.startDate){
+    const t=new Date(); t.setHours(0,0,0,0);
+    state.startDate=t.toISOString().slice(0,10);
+  }
+  save();
+  refreshCountdown();
+  renderGantt();
+});
+
+/* ============ TABS ============ */
+const tabButtons=document.querySelectorAll('.tab-btn');
+const views={ tracker: document.getElementById('view-tracker'), timeline: document.getElementById('view-timeline'), decide: document.getElementById('view-decide') };
+tabButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    tabButtons.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    Object.values(views).forEach(v=>v.classList.remove('active'));
+    views[btn.dataset.tab].classList.add('active');
+    if(btn.dataset.tab==='timeline') renderGantt();
+  });
+});
+
+/* ============ TRACKER RENDER ============ */
+let activePhase='now';
+let activeArea='all';
+
+function allRooms(){
+  const out=[];
+  AREAS.forEach(area=>area.rooms.forEach(r=>out.push(Object.assign({areaId:area.id, areaLabel:area.label}, r))));
+  return out;
+}
+
+function countForPhase(phase){
+  let total=0, comp=0;
+  allRooms().forEach(r=>r.tasks.forEach(t=>{
+    if(t.phase===phase){ total++; if(done.has(r.id+'::'+t.text)) comp++; }
+  }));
+  return {total, comp};
+}
+
+function totalCounts(){
+  let total=0, comp=0;
+  allRooms().forEach(r=>r.tasks.forEach(t=>{ total++; if(done.has(r.id+'::'+t.text)) comp++; }));
+  return {total, comp};
+}
+
+function renderStats(){
+  const {total, comp}=totalCounts();
+  const remaining=total-comp;
+  const sr=document.getElementById('stats-row');
+  sr.innerHTML=
+    '<div class="stat"><div class="num">'+comp+'</div><div class="lbl">Done</div></div>'+
+    '<div class="stat"><div class="num">'+remaining+'</div><div class="lbl">Remaining</div></div>'+
+    '<div class="stat"><div class="num">'+allRooms().length+'</div><div class="lbl">Rooms</div></div>'+
+    '<div class="stat"><div class="num">'+AREAS.length+'</div><div class="lbl">Areas</div></div>';
+  const pct=total ? Math.round(comp/total*100) : 0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+}
+
+function renderPhaseTabs(){
+  const wrap=document.getElementById('phase-tabs');
+  wrap.innerHTML='';
+  PHASES.forEach(p=>{
+    const {total, comp}=countForPhase(p.id);
+    const b=document.createElement('button');
+    b.className='pill'+(p.id===activePhase?' active':'');
+    b.textContent=p.label+' ('+comp+'/'+total+')';
+    b.addEventListener('click', ()=>{ activePhase=p.id; renderAll(); });
+    wrap.appendChild(b);
+  });
+}
+
+function renderAreaTabs(){
+  const wrap=document.getElementById('area-tabs');
+  wrap.innerHTML='';
+  const allBtn=document.createElement('button');
+  allBtn.className='pill'+(activeArea==='all'?' active area-active':'');
+  allBtn.textContent='All areas';
+  allBtn.addEventListener('click', ()=>{ activeArea='all'; renderAll(); });
+  wrap.appendChild(allBtn);
+
+  AREAS.forEach(area=>{
+    const b=document.createElement('button');
+    b.className='pill'+(area.id===activeArea?' active area-active':'');
+    b.textContent=area.label;
+    b.addEventListener('click', ()=>{ activeArea=area.id; renderAll(); });
+    wrap.appendChild(b);
+  });
+}
+
+const TAG_LABELS={easy:'quick win', sort:'sort', pack:'pack', donate:'donate'};
+
+function renderRoomCard(r){
+  const tasks=r.tasks.filter(t=>t.phase===activePhase);
+  if(!tasks.length) return null;
+
+  const comp=tasks.filter(t=>done.has(r.id+'::'+t.text)).length;
+
+  const roomEl=document.createElement('div');
+  roomEl.className='room';
+
+  const header=document.createElement('button');
+  header.className='room-header';
+  header.innerHTML=
+    '<span class="room-icon">'+r.icon+'</span>'+
+    '<span class="room-title">'+r.label+'</span>'+
+    '<span class="room-prog">'+comp+'/'+tasks.length+'</span>'+
+    '<span class="chevron">\u25BC</span>';
+
+  const list=document.createElement('div');
+  list.className='task-list';
+
+  tasks.forEach(t=>{
+    const key=r.id+'::'+t.text;
+    const isDone=done.has(key);
+    const taskBtn=document.createElement('button');
+    taskBtn.className='task'+(isDone?' done':'');
+    taskBtn.innerHTML=
+      '<span class="check"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8.5L6 11.5L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
+      '<span class="task-text">'+t.text+'</span>'+
+      '<span class="tag tag-'+t.tag+'">'+TAG_LABELS[t.tag]+'</span>';
+    taskBtn.addEventListener('click', ()=>{
+      if(done.has(key)) done.delete(key); else done.add(key);
+      save();
+      renderAll();
+    });
+    list.appendChild(taskBtn);
+  });
+
+  header.addEventListener('click', ()=>{
+    header.classList.toggle('open');
+    list.classList.toggle('open');
+  });
+
+  roomEl.appendChild(header);
+  roomEl.appendChild(list);
+  return roomEl;
+}
+
+function renderRooms(){
+  const container=document.getElementById('room-container');
+  const phase=PHASES.find(p=>p.id===activePhase);
+  document.getElementById('phase-tip').innerHTML=phase.tip;
+  container.innerHTML='';
+
+  let any=false;
+
+  AREAS.forEach(area=>{
+    if(activeArea!=='all' && activeArea!==area.id) return;
+
+    const cards=[];
+    area.rooms.forEach(r=>{
+      const card=renderRoomCard(r);
+      if(card) cards.push(card);
+    });
+
+    if(!cards.length) return;
+    any=true;
+
+    if(activeArea==='all'){
+      const h=document.createElement('div');
+      h.className='area-header';
+      h.textContent=area.label;
+      container.appendChild(h);
+    }
+
+    cards.forEach(c=>container.appendChild(c));
+  });
+
+  if(!any){
+    container.innerHTML='<div class="empty">No tasks in this phase for the selected area.</div>';
+  }
+}
+
+function renderAll(){
+  renderStats();
+  renderPhaseTabs();
+  renderAreaTabs();
+  renderRooms();
+  renderGantt();
+}
+
+/* ============ GANTT TIMELINE ============ */
+function dateFromISO(iso){
+  const d=new Date(iso+'T00:00:00');
+  return d;
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
+}
+
+function addDays(d, n){
+  const out=new Date(d);
+  out.setDate(out.getDate()+n);
+  return out;
+}
+
+function renderGantt(){
+  const container=document.getElementById('gantt-container');
+  if(!container) return;
+
+  if(!state.moveDate || !state.startDate){
+    container.innerHTML='<div class="gantt-empty">Set your move date above to see your packing timeline mapped out as a Gantt-style chart.</div>';
+    return;
+  }
+
+  const start=dateFromISO(state.startDate);
+  const move=dateFromISO(state.moveDate);
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  let totalDays=Math.round((move-start)/(1000*60*60*24));
+  if(totalDays<1) totalDays=1;
+
+  let todayOffset=Math.round((today-start)/(1000*60*60*24));
+  todayOffset=Math.max(0, Math.min(totalDays, todayOffset));
+  const todayPct=(todayOffset/totalDays)*100;
+  const todayInRange = today>=start && today<=move;
+
+  const daysLeft=Math.round((move-today)/(1000*60*60*24));
+
+  let html='';
+  html+='<div class="gantt-summary">';
+  if(daysLeft>1) html+='<strong>'+daysLeft+' days</strong> until your move ('+fmtDate(move)+'). You started planning on '+fmtDate(start)+'.';
+  else if(daysLeft===1) html+='<strong>Moving tomorrow</strong> ('+fmtDate(move)+').';
+  else if(daysLeft===0) html+='<strong>Moving today!</strong> ('+fmtDate(move)+')';
+  else html+='Your move date ('+fmtDate(move)+') has passed.';
+  html+='</div>';
+
+  html+='<div class="gantt-scale"><span>'+fmtDate(start)+'</span><span>Move day &mdash; '+fmtDate(move)+'</span></div>';
+
+  let cumPct=0;
+  PHASES.forEach(p=>{
+    const {total, comp}=countForPhase(p.id);
+    const completionPct = total ? (comp/total)*100 : 0;
+
+    const windowStartPct=cumPct;
+    const windowWidthPct=p.weight*100;
+    cumPct+=windowWidthPct;
+    const windowEndPct=cumPct;
+
+    // expected progress: how far through this phase's window "today" is
+    let expectedPct;
+    if(todayPct<=windowStartPct) expectedPct=0;
+    else if(todayPct>=windowEndPct) expectedPct=100;
+    else expectedPct=((todayPct-windowStartPct)/windowWidthPct)*100;
+
+    let statusHtml='';
+    if(todayInRange){
+      const diff=completionPct-expectedPct;
+      if(expectedPct<=0 && completionPct===0){
+        statusHtml='';
+      }else if(diff>=8){
+        statusHtml='<div class="gantt-status ahead">Ahead of schedule</div>';
+      }else if(diff<=-8){
+        statusHtml='<div class="gantt-status behind">A little behind \u2014 that\u2019s ok, pick one quick task</div>';
+      }else{
+        statusHtml='<div class="gantt-status ontrack">On track</div>';
+      }
+    }
+
+    const phaseStartDate=addDays(start, Math.round((windowStartPct/100)*totalDays));
+    const phaseEndDate=addDays(start, Math.round((windowEndPct/100)*totalDays));
+
+    html+='<div class="gantt-row">';
+    html+='<div class="gantt-row-label"><span>'+p.label+' <span class="sub">('+fmtDate(phaseStartDate)+' \u2013 '+fmtDate(phaseEndDate)+')</span></span><span class="pct">'+comp+'/'+total+'</span></div>';
+    html+='<div class="gantt-track">';
+    html+='<div class="gantt-window" style="left:'+windowStartPct+'%; width:'+windowWidthPct+'%;">';
+    html+='<div class="gantt-progress p-'+p.id+'" style="width:'+completionPct+'%;"></div>';
+    html+='</div>';
+    if(todayInRange){
+      html+='<div class="gantt-today-line" style="left:'+todayPct+'%;"></div>';
+    }
+    html+='</div>';
+    html+=statusHtml;
+    html+='</div>';
+  });
+
+  if(todayInRange){
+    html+='<div class="gantt-scale" style="margin-top:0.25rem;"><span></span><span>Today: '+fmtDate(today)+'</span></div>';
+  }
+
+  container.innerHTML=html;
+}
+
+renderAll();
+
+/* ============ DECISION TOOL ============ */
+let path=[];
+let current='broken';
+
+const RESULT_META={
+  keep:{cls:'keep', icon:'\u2713'},
+  donate:{cls:'donate', icon:'\u2665'},
+  bin:{cls:'bin', icon:'\u2715'}
+};
+
+function renderQuiz(){
+  const area=document.getElementById('quiz-area');
+  const node=TREE[current];
+
+  if(!node){ area.innerHTML=''; return; }
+
+  let bcHtml='';
+  if(path.length){
+    bcHtml='<div class="breadcrumb">'+path.map(p=>{
+      const ansClass = p.ans==='yes' ? 'yes-tag' : 'no-tag';
+      return '<span>'+p.short+'</span> \u2192 <span class="'+ansClass+'">'+p.ans+'</span>';
+    }).join(' \u2192 ')+'</div>';
+  }
+
+  const backBtn = path.length ? '<button class="choice ghost" id="back-btn">Back</button>' : '';
+
+  area.innerHTML = bcHtml +
+    '<div class="q-card">'+
+      '<div class="q-meta">Question '+(path.length+1)+' of up to 5</div>'+
+      '<div class="q-text">'+node.q+'</div>'+
+      '<div class="btn-row">'+
+        '<button class="choice yes" id="yes-btn">Yes</button>'+
+        '<button class="choice no" id="no-btn">No / not sure</button>'+
+        backBtn+
+      '</div>'+
+    '</div>';
+
+  document.getElementById('yes-btn').addEventListener('click', ()=>answer('yes'));
+  document.getElementById('no-btn').addEventListener('click', ()=>answer('no'));
+  const back=document.getElementById('back-btn');
+  if(back) back.addEventListener('click', goBack);
+}
+
+function answer(ans){
+  const node=TREE[current];
+  const short=node.q.length>40 ? node.q.substring(0,40)+'\u2026' : node.q;
+  path.push({id:current, short:short, ans:ans});
+  const next=node[ans];
+  if(typeof next==='string'){ current=next; renderQuiz(); }
+  else{ showResult(next); }
+}
+
+function goBack(){
+  if(!path.length) return;
+  const last=path.pop();
+  current=last.id;
+  renderQuiz();
+}
+
+function showResult(r){
+  const area=document.getElementById('quiz-area');
+  const meta=RESULT_META[r.result];
+  area.innerHTML=
+    '<div class="result '+meta.cls+'">'+
+      '<div class="result-title">'+meta.icon+' '+r.title+'</div>'+
+      '<div class="result-reason">'+r.reason+'</div>'+
+      '<div class="result-actions">'+
+        '<button class="choice" id="restart-btn">Decide another item</button>'+
+      '</div>'+
+    '</div>';
+  document.getElementById('restart-btn').addEventListener('click', ()=>{
+    path=[]; current='broken'; renderQuiz();
+  });
+}
+
+renderQuiz();
+</script>
+</body>
+</html>
