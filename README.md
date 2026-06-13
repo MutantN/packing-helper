@@ -1,4 +1,4 @@
-# Moving day helper
+# Nadia Schaum's Moving Day Helper
 
 **Live site:** https://packing-helper-five.vercel.app
 
