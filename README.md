@@ -1,4 +1,4 @@
-# Nadia Schaum's Moving Day Helper (synced version)
+# Alien Schaum's Moving Day Helper (synced version)
 
 **This version syncs across devices and people** — when anyone ticks a task or updates the move date, everyone else sees it within about 8 seconds (or instantly on next page load/tab focus).
 
