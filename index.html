@@ -72,11 +72,11 @@
     border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:inherit;
   }
 
-  nav.tabs{ display:flex; gap:8px; margin:1.5rem 0 1.25rem; border-bottom:1px solid var(--border); }
+  nav.tabs{ display:flex; flex-wrap:wrap; gap:4px 8px; margin:1.5rem 0 1.25rem; border-bottom:1px solid var(--border); }
   nav.tabs button{
-    flex:1; background:none; border:none; font-size:0.95rem; font-weight:600;
+    flex:1 1 28%; background:none; border:none; font-size:0.9rem; font-weight:600;
     color:var(--text-muted); padding:10px 4px 12px; cursor:pointer;
-    border-bottom:3px solid transparent; margin-bottom:-1px;
+    border-bottom:3px solid transparent; margin-bottom:-1px; white-space:nowrap;
     font-family:inherit; transition:color 0.15s, border-color 0.15s;
   }
   nav.tabs button.active{ color:var(--sage-text); border-bottom-color:var(--sage); }
@@ -241,6 +241,45 @@
   .gantt-status.ontrack{ color:var(--text-muted); }
   .gantt-empty{ text-align:center; color:var(--text-muted); padding:2rem 1rem; font-size:0.9rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
 
+  /* ---- Boxes / Budget / Admin (shared form styling) ---- */
+  .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem; margin-bottom:1.25rem; }
+  .form-row{ margin-bottom:0.75rem; }
+  .form-row:last-child{ margin-bottom:0; }
+  .form-row label{ font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:600; }
+  .form-row select, .form-row input, .form-row textarea{
+    width:100%; font-size:0.92rem; padding:8px 10px; border:1px solid var(--border);
+    border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-family:inherit; resize:vertical;
+  }
+  .form-actions{ margin-top:0.9rem; }
+
+  .search-results{ margin-bottom:1rem; }
+  .search-hit{ background:var(--sage-light); border:1px solid var(--sage); border-radius:var(--radius-sm); padding:0.7rem 0.9rem; margin-bottom:6px; font-size:0.88rem; }
+  .search-hit .hit-box{ font-weight:700; color:var(--sage-text); }
+  .search-hit .hit-room{ color:var(--text-muted); font-size:0.78rem; }
+  .search-none{ text-align:center; color:var(--text-muted); padding:0.75rem; font-size:0.85rem; }
+
+  .box-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.9rem 1.1rem; margin-bottom:0.6rem; }
+  .box-card-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .box-card-title{ font-weight:700; font-size:0.92rem; }
+  .box-card-room{ font-size:0.75rem; color:var(--text-muted); }
+  .box-items-list{ font-size:0.85rem; color:var(--text-muted); line-height:1.7; }
+  .box-remove{ background:none; border:none; color:var(--terracotta-text); font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; padding:2px 6px; }
+
+  .expense-row{ display:flex; align-items:center; gap:10px; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
+  .expense-row:last-child{ border-bottom:none; }
+  .expense-desc{ flex:1; }
+  .expense-cat{ font-size:0.72rem; color:var(--text-muted); background:var(--surface-2); padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .expense-amt{ font-weight:700; white-space:nowrap; }
+  .expense-del{ background:none; border:none; color:var(--terracotta-text); font-size:1rem; cursor:pointer; font-family:inherit; padding:0 4px; }
+
+  .cat-row{ margin-bottom:0.7rem; }
+  .cat-row-label{ display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px; }
+  .cat-row-label .amt{ color:var(--text-muted); font-weight:600; }
+  .cat-bar{ height:7px; background:var(--surface-2); border-radius:999px; overflow:hidden; }
+  .cat-bar-fill{ height:100%; background:var(--amber); border-radius:999px; }
+
+  .budget-fill-warn{ background:var(--terracotta) !important; }
+
   footer{ text-align:center; font-size:0.78rem; color:var(--text-faint); margin-top:2.5rem; }
 
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
@@ -269,6 +308,9 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tracker">Packing tracker</button>
     <button class="tab-btn" data-tab="timeline">Timeline</button>
+    <button class="tab-btn" data-tab="boxes">Boxes</button>
+    <button class="tab-btn" data-tab="budget">Budget</button>
+    <button class="tab-btn" data-tab="admin">Utilities &amp; admin</button>
     <button class="tab-btn" data-tab="decide">Keep or donate</button>
   </nav>
 
@@ -300,6 +342,90 @@
     <div id="gantt-container"></div>
   </section>
 
+  <!-- ===================== BOXES VIEW ===================== -->
+  <section class="view" id="view-boxes">
+    <div class="stats-row" id="box-stats-row"></div>
+
+    <div class="form-card">
+      <div class="form-row">
+        <label for="box-search">Find an item</label>
+        <input type="text" id="box-search" placeholder="e.g. coffee maker">
+      </div>
+      <div id="box-search-results"></div>
+    </div>
+
+    <div class="section-title">Add a box</div>
+    <div class="form-card">
+      <div class="form-row">
+        <label for="box-room-select">Room</label>
+        <select id="box-room-select"></select>
+      </div>
+      <div class="form-row">
+        <label for="box-contents">What's inside (one item per line)</label>
+        <textarea id="box-contents" rows="3" placeholder="Coffee maker&#10;Mugs&#10;Toaster"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="choice yes" id="add-box-btn">Add box</button>
+      </div>
+    </div>
+
+    <div class="section-title">All boxes</div>
+    <div id="box-list"></div>
+  </section>
+
+  <!-- ===================== BUDGET VIEW ===================== -->
+  <section class="view" id="view-budget">
+    <div class="form-card">
+      <div class="form-row">
+        <label for="budget-limit">Your moving budget</label>
+        <input type="number" id="budget-limit" min="0" step="10" placeholder="e.g. 2000">
+      </div>
+    </div>
+
+    <div class="progress-label">
+      <span>Spent so far</span>
+      <span id="budget-pct">$0</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="budget-fill" style="width:0%"></div></div>
+    <div class="tip-box" id="budget-summary"></div>
+
+    <div class="section-title">Add an expense</div>
+    <div class="form-card">
+      <div class="form-row">
+        <label for="expense-desc">Description</label>
+        <input type="text" id="expense-desc" placeholder="e.g. Moving truck rental">
+      </div>
+      <div class="form-row">
+        <label for="expense-cat">Category</label>
+        <select id="expense-cat"></select>
+      </div>
+      <div class="form-row">
+        <label for="expense-amt">Amount</label>
+        <input type="number" id="expense-amt" min="0" step="1" placeholder="e.g. 150">
+      </div>
+      <div class="form-actions">
+        <button class="choice yes" id="add-expense-btn">Add expense</button>
+      </div>
+    </div>
+
+    <div class="section-title">By category</div>
+    <div id="budget-categories"></div>
+
+    <div class="section-title">All expenses</div>
+    <div id="expense-list"></div>
+  </section>
+
+  <!-- ===================== ADMIN VIEW ===================== -->
+  <section class="view" id="view-admin">
+    <div class="progress-label">
+      <span>Utilities &amp; admin progress</span>
+      <span id="admin-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="admin-fill" style="width:0%"></div></div>
+    <div class="tip-box">Address changes and utility transfers aren't tied to a room, so they get their own list. Start these 3&ndash;4 weeks out where you can.</div>
+    <div id="admin-list"></div>
+  </section>
+
   <!-- ===================== DECISION VIEW ===================== -->
   <section class="view" id="view-decide">
 
@@ -318,7 +444,7 @@
 
   </section>
 
-  <footer>Your progress is saved automatically on this device.</footer>
+  <footer>Your progress is saved automatically and shared with everyone helping you move.</footer>
 </div>
 
 <script>
@@ -541,12 +667,18 @@ const TREE={
     no:{result:'donate',title:'Donate it',reason:'Holding onto who we used to be is human, but moving is the perfect reset. Let it go.'}}
 };
 
-/* ============ SHARED SYNC STORAGE ============ */
-// State now lives server-side (Vercel KV) so every device sees the same data.
-// We keep a local copy in memory for instant UI response, then push/pull from /api/state.
+/* ============ SHARED SYNC STORAGE ============
+   State lives server-side (via /api/state) so every device sees the same
+   data. We keep a local copy in memory for instant UI response, then
+   push/pull from /api/state. Extended beyond the original room checklist
+   to also sync boxes, box numbering, expenses, and the budget limit. */
 
-let state={done:[], moveDate:null, startDate:null, updatedAt:null, updatedBy:null};
+let state={done:[], moveDate:null, startDate:null, boxes:[], boxNumByRoom:{}, expenses:[], budgetLimit:null, updatedAt:null, updatedBy:null};
 let done=new Set();
+let boxes=[];
+let boxNumByRoom={};
+let expenses=[];
+let budgetLimit=null;
 let myName=null;
 try{ myName=localStorage.getItem('moving_helper_myname')||null; }catch(e){}
 
@@ -556,12 +688,21 @@ let lastKnownUpdatedAt=null;
 const POLL_MS=8000;
 
 function applyState(newState){
-  state=Object.assign({done:[], moveDate:null, startDate:null, updatedAt:null, updatedBy:null}, newState);
+  state=Object.assign({done:[], moveDate:null, startDate:null, boxes:[], boxNumByRoom:{}, expenses:[], budgetLimit:null, updatedAt:null, updatedBy:null}, newState);
   done=new Set(state.done||[]);
+  boxes=state.boxes||[];
+  boxNumByRoom=state.boxNumByRoom||{};
+  expenses=state.expenses||[];
+  budgetLimit=(state.budgetLimit!=null) ? state.budgetLimit : null;
   lastKnownUpdatedAt=state.updatedAt;
   if(state.moveDate) dateInput.value=state.moveDate;
+  const budgetInput=document.getElementById('budget-limit');
+  if(budgetInput) budgetInput.value = (budgetLimit!=null) ? budgetLimit : '';
   refreshCountdown();
   renderAll();
+  renderBoxes();
+  renderBudget();
+  renderAdmin();
   updateSyncBadge();
 }
 
@@ -602,7 +743,16 @@ async function pushState(){
   if(isSaving){ pendingSave=true; return; }
   isSaving=true;
   updateSyncBadge();
-  const payload={done:[...done], moveDate:state.moveDate, startDate:state.startDate, updatedBy:myName};
+  const payload={
+    done:[...done],
+    moveDate:state.moveDate,
+    startDate:state.startDate,
+    boxes:boxes,
+    boxNumByRoom:boxNumByRoom,
+    expenses:expenses,
+    budgetLimit:budgetLimit,
+    updatedBy:myName
+  };
   try{
     const res=await fetch('/api/state', {
       method:'POST',
@@ -624,7 +774,11 @@ async function pushState(){
 }
 
 function save(){
-  // optimistic local update, then sync to server
+  state.done=[...done];
+  state.boxes=boxes;
+  state.boxNumByRoom=boxNumByRoom;
+  state.expenses=expenses;
+  state.budgetLimit=budgetLimit;
   pushState();
 }
 
@@ -667,7 +821,7 @@ dateInput.addEventListener('change', ()=>{
   save();
 });
 
-/* ============ NAME PROMPT (so updates show "by ...") ============ */
+/* ============ NAME (so updates show "by ...") ============ */
 const nameInput=document.getElementById('your-name');
 if(nameInput){
   if(myName) nameInput.value=myName;
@@ -680,24 +834,16 @@ if(nameInput){
   });
 }
 
-/* ============ INITIAL LOAD ============ */
-(async function init(){
-  const data=await fetchState();
-  if(data){
-    applyState(data);
-  }else{
-    // offline fallback: try local backup so the UI isn't empty
-    try{
-      const backup=localStorage.getItem('moving_helper_offline_backup');
-      if(backup) applyState(JSON.parse(backup));
-      else { refreshCountdown(); renderAll(); }
-    }catch(e){ refreshCountdown(); renderAll(); }
-  }
-})();
-
 /* ============ TABS ============ */
 const tabButtons=document.querySelectorAll('.tab-btn');
-const views={ tracker: document.getElementById('view-tracker'), timeline: document.getElementById('view-timeline'), decide: document.getElementById('view-decide') };
+const views={
+  tracker: document.getElementById('view-tracker'),
+  timeline: document.getElementById('view-timeline'),
+  boxes: document.getElementById('view-boxes'),
+  budget: document.getElementById('view-budget'),
+  admin: document.getElementById('view-admin'),
+  decide: document.getElementById('view-decide')
+};
 tabButtons.forEach(btn=>{
   btn.addEventListener('click', ()=>{
     tabButtons.forEach(b=>b.classList.remove('active'));
@@ -705,6 +851,9 @@ tabButtons.forEach(btn=>{
     Object.values(views).forEach(v=>v.classList.remove('active'));
     views[btn.dataset.tab].classList.add('active');
     if(btn.dataset.tab==='timeline') renderGantt();
+    if(btn.dataset.tab==='boxes') renderBoxes();
+    if(btn.dataset.tab==='budget') renderBudget();
+    if(btn.dataset.tab==='admin') renderAdmin();
   });
 });
 
@@ -928,7 +1077,6 @@ function renderGantt(){
     cumPct+=windowWidthPct;
     const windowEndPct=cumPct;
 
-    // expected progress: how far through this phase's window "today" is
     let expectedPct;
     if(todayPct<=windowStartPct) expectedPct=0;
     else if(todayPct>=windowEndPct) expectedPct=100;
@@ -970,6 +1118,281 @@ function renderGantt(){
   }
 
   container.innerHTML=html;
+}
+
+/* ============ BOX INVENTORY ============
+   Solves the "which box is the coffee maker in" problem: every box is tagged
+   to a room and holds a free-text list of contents you can search across. */
+
+function populateBoxRoomSelect(){
+  const sel=document.getElementById('box-room-select');
+  sel.innerHTML='';
+  AREAS.forEach(area=>{
+    const group=document.createElement('optgroup');
+    group.label=area.label;
+    area.rooms.forEach(r=>{
+      const opt=document.createElement('option');
+      opt.value=r.id;
+      opt.textContent=r.label;
+      group.appendChild(opt);
+    });
+    sel.appendChild(group);
+  });
+}
+
+function roomLabelFor(roomId){
+  const r=allRooms().find(x=>x.id===roomId);
+  return r ? r.label : roomId;
+}
+
+function areaLabelForRoom(roomId){
+  const r=allRooms().find(x=>x.id===roomId);
+  return r ? r.areaLabel : '';
+}
+
+document.getElementById('add-box-btn').addEventListener('click', ()=>{
+  const roomId=document.getElementById('box-room-select').value;
+  const raw=document.getElementById('box-contents').value;
+  const items=raw.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!roomId || !items.length) return;
+  boxNumByRoom[roomId]=(boxNumByRoom[roomId]||0)+1;
+  boxes.push({
+    id:'box'+Date.now()+Math.random().toString(36).slice(2,6),
+    roomId:roomId,
+    num:boxNumByRoom[roomId],
+    items:items
+  });
+  document.getElementById('box-contents').value='';
+  renderBoxes();
+  save();
+});
+
+function deleteBox(id){
+  boxes=boxes.filter(b=>b.id!==id);
+  renderBoxes();
+  save();
+}
+
+document.getElementById('box-search').addEventListener('input', renderBoxes);
+
+function renderBoxStats(){
+  const wrap=document.getElementById('box-stats-row');
+  const totalItems=boxes.reduce((a,b)=>a+b.items.length,0);
+  const roomsCovered=new Set(boxes.map(b=>b.roomId)).size;
+  wrap.innerHTML=
+    '<div class="stat"><div class="num">'+boxes.length+'</div><div class="lbl">Boxes</div></div>'+
+    '<div class="stat"><div class="num">'+totalItems+'</div><div class="lbl">Items logged</div></div>'+
+    '<div class="stat"><div class="num">'+roomsCovered+'</div><div class="lbl">Rooms covered</div></div>';
+}
+
+function renderBoxSearch(){
+  const q=document.getElementById('box-search').value.trim().toLowerCase();
+  const out=document.getElementById('box-search-results');
+  if(!q){ out.innerHTML=''; return; }
+  const hits=[];
+  boxes.forEach(b=>{
+    b.items.forEach(item=>{
+      if(item.toLowerCase().includes(q)){
+        hits.push({box:b, item:item});
+      }
+    });
+  });
+  if(!hits.length){
+    out.innerHTML='<div class="search-none">Nothing matching "'+q+'" yet \u2014 it might not be packed, or try a different word.</div>';
+    return;
+  }
+  out.innerHTML='<div class="search-results">'+hits.map(h=>
+    '<div class="search-hit"><span class="hit-box">'+roomLabelFor(h.box.roomId)+' Box '+h.box.num+'</span> \u2014 '+h.item+
+    '<div class="hit-room">'+areaLabelForRoom(h.box.roomId)+'</div></div>'
+  ).join('')+'</div>';
+}
+
+function renderBoxList(){
+  const container=document.getElementById('box-list');
+  if(!boxes.length){
+    container.innerHTML='<div class="empty">No boxes logged yet. Add one above as you pack.</div>';
+    return;
+  }
+  const byArea={};
+  boxes.forEach(b=>{
+    const area=areaLabelForRoom(b.roomId)||'Other';
+    (byArea[area]=byArea[area]||[]).push(b);
+  });
+  let html='';
+  Object.keys(byArea).forEach(area=>{
+    html+='<div class="area-header">'+area+'</div>';
+    byArea[area].forEach(b=>{
+      html+='<div class="box-card">'+
+        '<div class="box-card-head">'+
+          '<div><div class="box-card-title">'+roomLabelFor(b.roomId)+' Box '+b.num+'</div>'+
+          '<div class="box-card-room">'+b.items.length+' item'+(b.items.length===1?'':'s')+'</div></div>'+
+          '<button class="box-remove" data-box-id="'+b.id+'">Remove</button>'+
+        '</div>'+
+        '<div class="box-items-list">'+b.items.join(', ')+'</div>'+
+      '</div>';
+    });
+  });
+  container.innerHTML=html;
+  container.querySelectorAll('.box-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteBox(btn.dataset.boxId));
+  });
+}
+
+function renderBoxes(){
+  renderBoxStats();
+  renderBoxSearch();
+  renderBoxList();
+}
+
+populateBoxRoomSelect();
+
+/* ============ BUDGET TRACKER ============ */
+
+const EXPENSE_CATEGORIES=['Movers & truck','Boxes & supplies','Storage','Deposits & fees','Other'];
+
+function populateExpenseCategorySelect(){
+  const sel=document.getElementById('expense-cat');
+  sel.innerHTML=EXPENSE_CATEGORIES.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}
+
+document.getElementById('budget-limit').addEventListener('input', (e)=>{
+  const v=parseFloat(e.target.value);
+  budgetLimit=isNaN(v) ? null : v;
+  renderBudget();
+});
+document.getElementById('budget-limit').addEventListener('change', save);
+
+document.getElementById('add-expense-btn').addEventListener('click', ()=>{
+  const desc=document.getElementById('expense-desc').value.trim();
+  const cat=document.getElementById('expense-cat').value;
+  const amt=parseFloat(document.getElementById('expense-amt').value);
+  if(!desc || isNaN(amt) || amt<=0) return;
+  expenses.push({id:'exp'+Date.now()+Math.random().toString(36).slice(2,6), desc:desc, cat:cat, amt:amt});
+  document.getElementById('expense-desc').value='';
+  document.getElementById('expense-amt').value='';
+  renderBudget();
+  save();
+});
+
+function deleteExpense(id){
+  expenses=expenses.filter(e=>e.id!==id);
+  renderBudget();
+  save();
+}
+
+function fmtMoney(n){
+  return '$'+n.toLocaleString(undefined,{maximumFractionDigits:0});
+}
+
+function renderBudget(){
+  const total=expenses.reduce((a,e)=>a+e.amt,0);
+  const pctOfBudget=budgetLimit ? Math.min(100, (total/budgetLimit)*100) : 0;
+  const over=budgetLimit!=null && total>budgetLimit;
+
+  document.getElementById('budget-pct').textContent=fmtMoney(total)+(budgetLimit ? ' of '+fmtMoney(budgetLimit) : '');
+  const fill=document.getElementById('budget-fill');
+  fill.style.width=(budgetLimit ? pctOfBudget : (total>0?100:0))+'%';
+  fill.className='progress-fill'+(over ? ' budget-fill-warn' : '');
+
+  const summary=document.getElementById('budget-summary');
+  if(!budgetLimit){
+    summary.innerHTML='Set a budget above to see how your spending tracks against it.';
+  }else if(over){
+    summary.innerHTML='<strong>'+fmtMoney(total-budgetLimit)+' over budget.</strong> Worth checking if any upcoming expenses (storage, deposits) can be trimmed.';
+  }else{
+    summary.innerHTML='<strong>'+fmtMoney(budgetLimit-total)+' remaining</strong> in your moving budget.';
+  }
+
+  const catWrap=document.getElementById('budget-categories');
+  if(!expenses.length){
+    catWrap.innerHTML='<div class="empty">No expenses logged yet.</div>';
+  }else{
+    const sums={};
+    EXPENSE_CATEGORIES.forEach(c=>sums[c]=0);
+    expenses.forEach(e=>sums[e.cat]=(sums[e.cat]||0)+e.amt);
+    const maxSum=Math.max(...Object.values(sums), 1);
+    catWrap.innerHTML=EXPENSE_CATEGORIES.filter(c=>sums[c]>0).map(c=>
+      '<div class="cat-row">'+
+        '<div class="cat-row-label"><span>'+c+'</span><span class="amt">'+fmtMoney(sums[c])+'</span></div>'+
+        '<div class="cat-bar"><div class="cat-bar-fill" style="width:'+((sums[c]/maxSum)*100)+'%"></div></div>'+
+      '</div>'
+    ).join('');
+  }
+
+  const listWrap=document.getElementById('expense-list');
+  if(!expenses.length){
+    listWrap.innerHTML='<div class="empty">Add your first expense above.</div>';
+  }else{
+    listWrap.innerHTML=expenses.slice().reverse().map(e=>
+      '<div class="expense-row">'+
+        '<span class="expense-desc">'+e.desc+'</span>'+
+        '<span class="expense-cat">'+e.cat+'</span>'+
+        '<span class="expense-amt">'+fmtMoney(e.amt)+'</span>'+
+        '<button class="expense-del" data-exp-id="'+e.id+'" title="Remove">\u2715</button>'+
+      '</div>'
+    ).join('');
+    listWrap.querySelectorAll('.expense-del').forEach(btn=>{
+      btn.addEventListener('click', ()=>deleteExpense(btn.dataset.expId));
+    });
+  }
+}
+
+populateExpenseCategorySelect();
+
+/* ============ ADMIN / UTILITIES CHECKLIST ============
+   These tasks aren't tied to a room, so they get a flat categorized list.
+   Reuses the same `done` set as the room tracker, namespaced with 'admin::'. */
+
+const ADMIN_TASKS=[
+  {cat:'Address & mail', text:'Submit USPS (or local postal) mail forwarding'},
+  {cat:'Address & mail', text:'Update address with your bank and credit cards'},
+  {cat:'Address & mail', text:'Update address with your employer and payroll'},
+  {cat:'Address & mail', text:'Update voter registration'},
+  {cat:'Address & mail', text:'Update address for health, auto, and home/renters insurance'},
+  {cat:'Utilities', text:'Schedule disconnection of electricity, gas and water at the old address'},
+  {cat:'Utilities', text:'Schedule connection of electricity, gas and water at the new address'},
+  {cat:'Utilities', text:'Transfer or set up internet at the new address'},
+  {cat:'Utilities', text:'Cancel or transfer cable/streaming services tied to your address'},
+  {cat:'Documents & records', text:'Back up passport, birth certificate, lease and insurance digitally'},
+  {cat:'Documents & records', text:'Gather school, medical and vet records if applicable'},
+  {cat:'Moving day', text:'Confirm move-out inspection time with your landlord'},
+  {cat:'Moving day', text:'Pack a first-night essentials bag (meds, chargers, snacks)'},
+  {cat:'Moving day', text:'Do a final walkthrough of the old place before leaving'}
+];
+
+function renderAdmin(){
+  const total=ADMIN_TASKS.length;
+  const comp=ADMIN_TASKS.filter(t=>done.has('admin::'+t.text)).length;
+  const pct=total ? Math.round(comp/total*100) : 0;
+  document.getElementById('admin-pct').textContent=pct+'%';
+  document.getElementById('admin-fill').style.width=pct+'%';
+
+  const byCat={};
+  ADMIN_TASKS.forEach(t=>{ (byCat[t.cat]=byCat[t.cat]||[]).push(t); });
+
+  const container=document.getElementById('admin-list');
+  let html='';
+  Object.keys(byCat).forEach(cat=>{
+    html+='<div class="room"><div class="room-header open" style="cursor:default;"><span class="room-title">'+cat+'</span></div><div class="task-list open">';
+    byCat[cat].forEach(t=>{
+      const key='admin::'+t.text;
+      const isDone=done.has(key);
+      html+='<button class="task'+(isDone?' done':'')+'" data-admin-key="'+encodeURIComponent(key)+'">'+
+        '<span class="check"><svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 8.5L6 11.5L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
+        '<span class="task-text">'+t.text+'</span>'+
+      '</button>';
+    });
+    html+='</div></div>';
+  });
+  container.innerHTML=html;
+  container.querySelectorAll('[data-admin-key]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key=decodeURIComponent(btn.dataset.adminKey);
+      if(done.has(key)) done.delete(key); else done.add(key);
+      save();
+      renderAdmin();
+    });
+  });
 }
 
 /* ============ DECISION TOOL ============ */
@@ -1048,6 +1471,21 @@ function showResult(r){
 }
 
 renderQuiz();
+
+/* ============ INITIAL LOAD ============
+   Runs last, after every function and variable above has been declared. */
+(async function init(){
+  const data=await fetchState();
+  if(data){
+    applyState(data);
+  }else{
+    try{
+      const backup=localStorage.getItem('moving_helper_offline_backup');
+      if(backup){ applyState(JSON.parse(backup)); }
+      else{ refreshCountdown(); renderAll(); renderBoxes(); renderBudget(); renderAdmin(); }
+    }catch(e){ refreshCountdown(); renderAll(); renderBoxes(); renderBudget(); renderAdmin(); }
+  }
+})();
 </script>
 </body>
 </html>
