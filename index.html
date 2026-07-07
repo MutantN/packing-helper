@@ -280,6 +280,36 @@
 
   .budget-fill-warn{ background:var(--terracotta) !important; }
 
+  /* ---- Kanban board (Board view) ---- */
+  .kanban-board{ display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; }
+  .kanban-col{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:0.7rem; min-height:220px; }
+  .kanban-col.dragover{ background:var(--sage-light); }
+  .kanban-col-head{ font-size:0.78rem; font-weight:700; margin-bottom:8px; padding-bottom:6px; border-bottom:3px solid var(--border); color:var(--text); }
+  .kanban-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:0.6rem 0.75rem; margin-bottom:8px; cursor:grab; font-size:0.85rem;
+  }
+  .kanban-card-title{ font-weight:600; }
+  .kanban-card-sub{ font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+  .kanban-card-progress{ margin-top:6px; height:5px; background:var(--surface-2); border-radius:999px; overflow:hidden; }
+  .kanban-card-progress-fill{ height:100%; border-radius:999px; }
+  .kanban-empty{ font-size:0.78rem; color:var(--text-faint); text-align:center; padding:1rem 0; }
+  .kanban-hint{ font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem; }
+
+  @media (max-width:700px){
+    .kanban-board{ grid-template-columns:repeat(2, 1fr); }
+  }
+  @media (max-width:460px){
+    .kanban-board{ grid-template-columns:1fr; }
+  }
+
+  /* ---- Dashboard ---- */
+  .dash-row{ margin-bottom:0.9rem; }
+  .dash-row-label{ display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px; }
+  .dash-row-label .amt{ color:var(--text-muted); font-weight:600; font-size:0.78rem; }
+  .dash-bar{ height:8px; background:var(--surface-2); border-radius:999px; overflow:hidden; }
+  .dash-bar-fill{ height:100%; background:var(--sage); border-radius:999px; }
+
   footer{ text-align:center; font-size:0.78rem; color:var(--text-faint); margin-top:2.5rem; }
 
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
@@ -307,7 +337,9 @@
 
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tracker">Packing tracker</button>
+    <button class="tab-btn" data-tab="board">Board</button>
     <button class="tab-btn" data-tab="timeline">Timeline</button>
+    <button class="tab-btn" data-tab="dashboard">Dashboard</button>
     <button class="tab-btn" data-tab="boxes">Boxes</button>
     <button class="tab-btn" data-tab="budget">Budget</button>
     <button class="tab-btn" data-tab="admin">Utilities &amp; admin</button>
@@ -340,6 +372,23 @@
   <!-- ===================== TIMELINE VIEW ===================== -->
   <section class="view" id="view-timeline">
     <div id="gantt-container"></div>
+  </section>
+
+  <!-- ===================== BOARD VIEW ===================== -->
+  <section class="view" id="view-board">
+    <div class="kanban-hint">Each card is a room. It moves through the columns automatically as you check off tasks in the Packing tracker — or drag it yourself to mark everything up to that stage as done.</div>
+    <div class="filter-label">Area</div>
+    <div class="pill-row" id="kanban-area-tabs"></div>
+    <div class="kanban-board" id="kanban-board"></div>
+  </section>
+
+  <!-- ===================== DASHBOARD VIEW ===================== -->
+  <section class="view" id="view-dashboard">
+    <div class="stats-row" id="dash-stats-row"></div>
+    <div class="section-title">Progress by area</div>
+    <div id="dash-areas"></div>
+    <div class="section-title">Progress by phase</div>
+    <div id="dash-phases"></div>
   </section>
 
   <!-- ===================== BOXES VIEW ===================== -->
@@ -700,6 +749,8 @@ function applyState(newState){
   if(budgetInput) budgetInput.value = (budgetLimit!=null) ? budgetLimit : '';
   refreshCountdown();
   renderAll();
+  renderKanban();
+  renderDashboard();
   renderBoxes();
   renderBudget();
   renderAdmin();
@@ -838,7 +889,9 @@ if(nameInput){
 const tabButtons=document.querySelectorAll('.tab-btn');
 const views={
   tracker: document.getElementById('view-tracker'),
+  board: document.getElementById('view-board'),
   timeline: document.getElementById('view-timeline'),
+  dashboard: document.getElementById('view-dashboard'),
   boxes: document.getElementById('view-boxes'),
   budget: document.getElementById('view-budget'),
   admin: document.getElementById('view-admin'),
@@ -850,7 +903,9 @@ tabButtons.forEach(btn=>{
     btn.classList.add('active');
     Object.values(views).forEach(v=>v.classList.remove('active'));
     views[btn.dataset.tab].classList.add('active');
+    if(btn.dataset.tab==='board') renderKanban();
     if(btn.dataset.tab==='timeline') renderGantt();
+    if(btn.dataset.tab==='dashboard') renderDashboard();
     if(btn.dataset.tab==='boxes') renderBoxes();
     if(btn.dataset.tab==='budget') renderBudget();
     if(btn.dataset.tab==='admin') renderAdmin();
@@ -1016,6 +1071,185 @@ function renderAll(){
   renderAreaTabs();
   renderRooms();
   renderGantt();
+  renderKanban();
+  renderDashboard();
+}
+
+/* ============ KANBAN BOARD ============
+   Each column is a packing phase; each card is a whole room. A room's
+   column is computed from real task completion (the earliest phase where
+   it still has unfinished tasks), so it moves automatically as you check
+   things off in the Packing tracker. Dragging a card to a later column
+   marks every task before that phase as done and everything from that
+   phase onward as not done — a quick way to bulk-update a room's status. */
+
+const PHASE_ORDER=['now','mid','late','final'];
+const PHASE_COLOR={ now:'#C9714F', mid:'#C99A3B', late:'#2B7DA8', final:'#5B8A6E' };
+
+let kanbanAreaFilter='all';
+let kanbanDragRoomId=null;
+
+function computeRoomPhase(room){
+  for(const pid of PHASE_ORDER){
+    const tks=room.tasks.filter(t=>t.phase===pid);
+    if(!tks.length) continue;
+    const allDone=tks.every(t=>done.has(room.id+'::'+t.text));
+    if(!allDone) return {phase:pid, fullyDone:false};
+  }
+  return {phase:'done', fullyDone:true};
+}
+
+function roomProgress(room){
+  const total=room.tasks.length;
+  const comp=room.tasks.filter(t=>done.has(room.id+'::'+t.text)).length;
+  return {total, comp};
+}
+
+function moveRoomToPhase(roomId, targetPhaseId){
+  const room=allRooms().find(r=>r.id===roomId);
+  if(!room) return;
+  const targetIndex = targetPhaseId==='done' ? PHASE_ORDER.length : PHASE_ORDER.indexOf(targetPhaseId);
+  PHASE_ORDER.forEach((pid, i)=>{
+    const tks=room.tasks.filter(t=>t.phase===pid);
+    tks.forEach(t=>{
+      const key=room.id+'::'+t.text;
+      if(i<targetIndex) done.add(key);
+      else done.delete(key);
+    });
+  });
+  save();
+  renderKanban();
+  renderAll();
+}
+
+function renderKanbanAreaTabs(){
+  const wrap=document.getElementById('kanban-area-tabs');
+  wrap.innerHTML='';
+  const allBtn=document.createElement('button');
+  allBtn.className='pill'+(kanbanAreaFilter==='all'?' active area-active':'');
+  allBtn.textContent='All areas';
+  allBtn.addEventListener('click', ()=>{ kanbanAreaFilter='all'; renderKanban(); });
+  wrap.appendChild(allBtn);
+
+  AREAS.forEach(area=>{
+    const b=document.createElement('button');
+    b.className='pill'+(area.id===kanbanAreaFilter?' active area-active':'');
+    b.textContent=area.label;
+    b.addEventListener('click', ()=>{ kanbanAreaFilter=area.id; renderKanban(); });
+    wrap.appendChild(b);
+  });
+}
+
+function renderKanban(){
+  renderKanbanAreaTabs();
+  const container=document.getElementById('kanban-board');
+  container.innerHTML='';
+
+  const cols=[...PHASE_ORDER, 'done'];
+  cols.forEach(pid=>{
+    const phase=PHASES.find(p=>p.id===pid);
+    const colEl=document.createElement('div');
+    colEl.className='kanban-col';
+
+    const head=document.createElement('div');
+    head.className='kanban-col-head';
+    head.style.borderColor = pid==='done' ? 'var(--sage)' : PHASE_COLOR[pid];
+    head.textContent = pid==='done' ? 'Done \u2713' : phase.short;
+    colEl.appendChild(head);
+
+    let matchingRooms=[];
+    AREAS.forEach(area=>{
+      if(kanbanAreaFilter!=='all' && kanbanAreaFilter!==area.id) return;
+      area.rooms.forEach(r=>{
+        const rp=computeRoomPhase(r);
+        if(rp.phase===pid){
+          matchingRooms.push({room:r, areaLabel:area.label, fullyDone:rp.fullyDone});
+        }
+      });
+    });
+
+    if(!matchingRooms.length){
+      const e=document.createElement('div');
+      e.className='kanban-empty';
+      e.textContent='No rooms here';
+      colEl.appendChild(e);
+    }
+
+    matchingRooms.forEach(({room, areaLabel, fullyDone})=>{
+      const prog=roomProgress(room);
+      const pct=prog.total ? Math.round(prog.comp/prog.total*100) : 0;
+      const card=document.createElement('div');
+      card.className='kanban-card';
+      card.draggable=true;
+      card.addEventListener('dragstart', ()=>{ kanbanDragRoomId=room.id; });
+      card.innerHTML=
+        '<div class="kanban-card-title">'+room.icon+' '+room.label+(fullyDone?' \u2713':'')+'</div>'+
+        '<div class="kanban-card-sub">'+areaLabel+' \u00b7 '+prog.comp+'/'+prog.total+' tasks</div>'+
+        '<div class="kanban-card-progress"><div class="kanban-card-progress-fill" style="width:'+pct+'%; background:'+(fullyDone?'var(--sage)':(PHASE_COLOR[pid]||'var(--sage)'))+';"></div></div>';
+      colEl.appendChild(card);
+    });
+
+    colEl.addEventListener('dragover', (e)=>{ e.preventDefault(); colEl.classList.add('dragover'); });
+    colEl.addEventListener('dragleave', ()=>colEl.classList.remove('dragover'));
+    colEl.addEventListener('drop', ()=>{
+      colEl.classList.remove('dragover');
+      if(kanbanDragRoomId){
+        moveRoomToPhase(kanbanDragRoomId, pid);
+        kanbanDragRoomId=null;
+      }
+    });
+
+    container.appendChild(colEl);
+  });
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(){
+  const {total, comp}=totalCounts();
+  const pct=total ? Math.round(comp/total*100) : 0;
+
+  let daysLeftLabel='Set a move date';
+  if(state.moveDate){
+    const today=new Date(); today.setHours(0,0,0,0);
+    const move=new Date(state.moveDate); move.setHours(0,0,0,0);
+    const diff=Math.round((move-today)/(1000*60*60*24));
+    daysLeftLabel = diff>=0 ? (diff+' days left') : 'Move date passed';
+  }
+
+  const spent=expenses.reduce((a,e)=>a+e.amt,0);
+  let budgetLabel = budgetLimit!=null ? (fmtMoney(spent)+' of '+fmtMoney(budgetLimit)) : (spent>0 ? fmtMoney(spent)+' logged' : 'No budget set');
+
+  const adminTotal=ADMIN_TASKS.length;
+  const adminComp=ADMIN_TASKS.filter(t=>done.has('admin::'+t.text)).length;
+  const adminPct=adminTotal ? Math.round(adminComp/adminTotal*100) : 0;
+
+  const wrap=document.getElementById('dash-stats-row');
+  wrap.innerHTML=
+    '<div class="stat"><div class="num">'+pct+'%</div><div class="lbl">Packing done</div></div>'+
+    '<div class="stat"><div class="num">'+boxes.length+'</div><div class="lbl">Boxes logged</div></div>'+
+    '<div class="stat"><div class="num">'+adminPct+'%</div><div class="lbl">Admin done</div></div>'+
+    '<div class="stat"><div class="num" style="font-size:1.05rem;">'+daysLeftLabel+'</div><div class="lbl">'+budgetLabel+'</div></div>';
+
+  const areaWrap=document.getElementById('dash-areas');
+  areaWrap.innerHTML=AREAS.map(area=>{
+    let aTotal=0, aComp=0;
+    area.rooms.forEach(r=>r.tasks.forEach(t=>{ aTotal++; if(done.has(r.id+'::'+t.text)) aComp++; }));
+    const aPct=aTotal ? Math.round(aComp/aTotal*100) : 0;
+    return '<div class="dash-row">'+
+      '<div class="dash-row-label"><span>'+area.label+'</span><span class="amt">'+aComp+'/'+aTotal+'</span></div>'+
+      '<div class="dash-bar"><div class="dash-bar-fill" style="width:'+aPct+'%;"></div></div>'+
+    '</div>';
+  }).join('');
+
+  const phaseWrap=document.getElementById('dash-phases');
+  phaseWrap.innerHTML=PHASES.map(p=>{
+    const {total:pTotal, comp:pComp}=countForPhase(p.id);
+    const pPct=pTotal ? Math.round(pComp/pTotal*100) : 0;
+    return '<div class="dash-row">'+
+      '<div class="dash-row-label"><span>'+p.label+'</span><span class="amt">'+pComp+'/'+pTotal+'</span></div>'+
+      '<div class="dash-bar"><div class="dash-bar-fill" style="width:'+pPct+'%; background:'+PHASE_COLOR[p.id]+';"></div></div>'+
+    '</div>';
+  }).join('');
 }
 
 /* ============ GANTT TIMELINE ============ */
@@ -1482,8 +1716,8 @@ renderQuiz();
     try{
       const backup=localStorage.getItem('moving_helper_offline_backup');
       if(backup){ applyState(JSON.parse(backup)); }
-      else{ refreshCountdown(); renderAll(); renderBoxes(); renderBudget(); renderAdmin(); }
-    }catch(e){ refreshCountdown(); renderAll(); renderBoxes(); renderBudget(); renderAdmin(); }
+      else{ refreshCountdown(); renderAll(); renderKanban(); renderDashboard(); renderBoxes(); renderBudget(); renderAdmin(); }
+    }catch(e){ refreshCountdown(); renderAll(); renderKanban(); renderDashboard(); renderBoxes(); renderBudget(); renderAdmin(); }
   }
 })();
 </script>
